@@ -4,7 +4,7 @@ import numpy as np
 class Tuple:
     id = 0
 
-    def __init__(self, pid=0, offset=0, qid_atts={}):
+    def __init__(self, pid=0, offset=0, qid_atts=None):
         self.pid = Tuple.id
         Tuple.id += 1
         if qid_atts is None:
@@ -25,7 +25,7 @@ class Cluster:
     genAtts: dict
         dictionary with minimum and maximum of each pid in Cluster that will be used in calculation of Tau.
         The key is the attribute's name, and the value is a a tuple (min, max) containing the minimum and maximum values
-            in the cluster -> {att_name: (min, max)}.
+        in the cluster -> {att_name: (min, max)}.
     """
 
     id = 0
@@ -128,46 +128,30 @@ class Tau:
     """
     Keeps track of the last mi cluster published, and calculates the average of their info_loss.
     """
-    def __init__(self, qid_atts_domain={}, mi=0, value=0):
+    def __init__(self, mi=0, value=0):
         """
-
-        :param qid_atts_domain: dict -> {att_name: (min, max)}
         :param mi: number of published clusters to be used to calculate Tau
         :param value: the info_loss average of the last mi published clusters
         """
         self.value = value
-        self.qidAttsDomain = qid_atts_domain
-        self.last_clusters = []
+        self.last_clusters_info_loss = []
         self.mi = mi
 
-    def update(self, cluster):
+    def update(self, cluster_info_loss):
         """
         Updates tau value.
 
-        :param cluster: last published cluster
+        :param cluster_info_loss: info loss from last published cluster
         """
-        from doca import info_loss
 
-        if len(self.last_clusters) < self.mi:
-            self.last_clusters.append(cluster)
-            self.value = sum([info_loss(aux_cluster, self.qidAttsDomain)
-                              for aux_cluster in self.last_clusters]) / len(self.last_clusters)
+        if len(self.last_clusters_info_loss) < self.mi:
+            self.last_clusters_info_loss.append(cluster_info_loss)
         # if anonymizedClusters size is >= mi, should pop the oldest one before adding
         else:
-            self.last_clusters.pop(0)
-            self.last_clusters.append(cluster)
-            self.value = sum([info_loss(aux_cluster, self.qidAttsDomain)
-                              for aux_cluster in self.last_clusters]) / len(self.last_clusters)
+            self.last_clusters_info_loss.pop(0)
+            self.last_clusters_info_loss.append(cluster_info_loss)
+
+        self.value = sum(self.last_clusters_info_loss) / len(self.last_clusters_info_loss)
 
 
-def noise(bounded_delta, cluster_size, eps):
-    """
-    Returns a sample from Laplace distribution with mean=0 and scale=sensitivity/cluster_size
-    :param bounded_delta: stream's sensitivity
-    :param cluster_size: number of tuples in the cluster
-    :param eps: epsilon parameter from differential privacy
-    :return: a sample from Laplace distribution with mean=0 and scale=sensitivity/cluster_size
-    """
-    sensitivity = bounded_delta/cluster_size
-    scale = sensitivity/eps
-    return np.random.laplace(0, scale, 1)[0]
+

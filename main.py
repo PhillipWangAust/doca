@@ -1,6 +1,5 @@
-import doca
+from doca import Doca
 import os
-from multiprocessing import Pool
 import numpy as np
 
 
@@ -16,22 +15,21 @@ def proc(id):
     output_dir = "results/{}/".format(id)
     ensure_dir(output_dir)
 
-    data = np.loadtxt(fname="data/backblaze_2017_q1_m1.csv")
+    data = np.loadtxt(fname="data/loans.csv")
 
     delta = 1.5*abs(data.max()-data.min())
 
     print(delta)
 
-    np.random.shuffle(data)
+    # np.random.shuffle(data)
 
     stream = [[i, {'att': float(line)}] for i, line in enumerate(data)]
 
-    doca.cluster(stream, delta=1000, beta=50, mi=100, eps=1,
-                 bounded_delta=delta, output_path=output_dir)
+    doca = Doca(delta_time=1000, beta=50, mi=100, budget=1, sensitivity=delta)
+    doca.cluster(stream, output_dir)
 
 
 if __name__ == '__main__':
-    pool = Pool(3)
-    pool.map(proc, [0, 1, 2, 3, 4])
 
+    proc("info_loss")
     print("finish all")
